@@ -65,6 +65,9 @@ usertrap(void)
     intr_on();
 
     syscall();
+  } else if (r_scause == 16) {
+    // cow fault handler
+    // TODO: implement a new additional free2() (+ error checking (return value -1 means error))
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {

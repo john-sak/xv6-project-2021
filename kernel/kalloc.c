@@ -23,6 +23,12 @@ struct {
   struct run *freelist;
 } kmem;
 
+// reference count for pages
+struct {
+  struct spinlock lock;
+  int page[PHYSTOP/PGSIZE];
+} refCount;
+
 void
 kinit()
 {
