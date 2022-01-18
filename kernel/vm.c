@@ -318,12 +318,12 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     // memmove(mem, (char*)pa, PGSIZE);
 
     // parent and child's PTEs are READ_ONLY 
+    *pte &= ~PTE_W;
     flags &= ~PTE_W;
     if(mappages(new, i, PGSIZE, (uint64)pa, flags) != 0){
       // kfree(mem);
       goto err;
     }
-    *pte &= ~PTE_W;
     // TODO: increment pa's reference counter
   }
   return 0;

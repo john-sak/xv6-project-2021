@@ -41,8 +41,12 @@ freerange(void *pa_start, void *pa_end)
 {
   char *p;
   p = (char*)PGROUNDUP((uint64)pa_start);
-  for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE)
+  for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE) {
+    acquire(&refCount.lock);
+    refCount.page[(p - end) / PGSIZE] = 1;
+    release(&refCount.lock);
     kfree(p);
+  }
 }
 
 // Free the page of physical memory pointed at by v,
@@ -59,6 +63,10 @@ kfree(void *pa)
 
   // Fill with junk to catch dangling refs.
   memset(pa, 1, PGSIZE);
+
+  acquire(&refCount.lock);
+  refCount.page[(((char *) pa) - end) / PGSIZE]--;
+  release(&refCount.lock);
 
   r = (struct run*)pa;
 
@@ -84,5 +92,13 @@ kalloc(void)
 
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
+  
+  acquire(&refCount.lock);
+  if (refCount.page[(((char *) r) - end) / PGSIZE] != 0) {
+    // TODO: error
+  }
+  refCount[(((char *) r) - end) / PGSIZE]++;
+  release(&refCount.lock);
+
   return (void*)r;
 }
