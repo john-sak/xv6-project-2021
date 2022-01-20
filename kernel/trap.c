@@ -67,6 +67,22 @@ usertrap(void)
     syscall();
   } else if (r_scause() == 15) {
     // cow fault handler
+
+    // IMPORTANT what virtual address do I need to use to get the PTE
+    // that caused the problem?
+
+    pagetable_t pt = p->pagetable;
+    pte_t *pte;
+    uint64 pa, i;
+    uint flags;
+    for (int i = 0; i < p->sz; i+= PGSIZE) {
+      // i is the VA
+      if ((pte = walk(pt, i, 0)) == 0) panic("usertrap: pte should exist");
+      if ((*pte & PTE_V) == 0) panic("usertrap: page not present");
+      pa = PTE2PA(*pte);
+      flags = PTE_FLAGS(*pte);
+      // resolve the issue here
+    }
     // TODO: implement a new additional free2() (+ error checking (return value -1 means error))
   } else if((which_dev = devintr()) != 0){
     // ok

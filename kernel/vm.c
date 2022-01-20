@@ -291,6 +291,15 @@ uvmfree(pagetable_t pagetable, uint64 sz)
   freewalk(pagetable);
 }
 
+#include "spinlock.h"
+
+extern struct refc {
+  struct spinlock lock;
+  int page[PHYSTOP/PGSIZE];
+} refCount;
+
+extern char end[];
+
 // Given a parent process's page table, copy
 // its memory into a child's page table.
 // Copies both the page table and the
@@ -320,6 +329,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       goto err;
     }
     // --> TODO: increment pa's reference counter <--
+    refCount.page[(((char *) pa) - end) / PGSIZE]++;
   }
   return 0;
 

@@ -24,7 +24,7 @@ struct {
 } kmem;
 
 // reference count for pages
-struct {
+struct refc {
   struct spinlock lock;
   int page[PHYSTOP/PGSIZE];
 } refCount;
