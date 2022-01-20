@@ -97,7 +97,7 @@ kalloc(void)
   if (refCount.page[(((char *) r) - end) / PGSIZE] != 0) {
     // TODO: error
   }
-  refCount[(((char *) r) - end) / PGSIZE]++;
+  refCount.page[(((char *) r) - end) / PGSIZE]++;
   release(&refCount.lock);
 
   return (void*)r;
