@@ -29,6 +29,14 @@ trapinithart(void)
   w_stvec((uint64)kernelvec);
 }
 
+extern struct ref {
+  struct spinlock lock;
+  int page[PHYSTOP/PGSIZE];
+} refCount;
+
+extern char end[];
+pte_t *walk(pagetable_t, uint64, int);
+
 //
 // handle an interrupt, exception, or system call from user space.
 // called from trampoline.S
@@ -67,23 +75,26 @@ usertrap(void)
     syscall();
   } else if (r_scause() == 15) {
     // cow fault handler
-
-    // IMPORTANT what virtual address do I need to use to get the PTE
-    // that caused the problem?
-
-    pagetable_t pt = p->pagetable;
+    uint64 va = r_stval(), pa;
     pte_t *pte;
-    uint64 pa, i;
-    uint flags;
-    for (int i = 0; i < p->sz; i+= PGSIZE) {
-      // i is the VA
-      if ((pte = walk(pt, i, 0)) == 0) panic("usertrap: pte should exist");
-      if ((*pte & PTE_V) == 0) panic("usertrap: page not present");
-      pa = PTE2PA(*pte);
-      flags = PTE_FLAGS(*pte);
-      // resolve the issue here
+    if (va >= MAXVA) panic("usertrap: VA out of bounds");
+    if ((pte = walk(p->pagetable, va, 0)) == 0) panic("usertrap: PTE should exist");
+    if ((*pte & PTE_V) == 0) panic("usertrap: page not valid");
+    if ((*pte & PTE_U) == 0) panic("usertrap: page not set for user"); // todo error message
+    if ((*pte & PTE_W) != 0) panic("usertrap: page has write permissions"); // todo error message
+    pa = PTE2PA(*pte);
+    if (refCount.page[(((char *) pa) - end) / PGSIZE] == 1) *pte |= PTE_W;
+    else {
+      // flags = PTE_FLAGS(*pte);
+      // flags |= PTE_W;
+      char *mem;
+      if ((mem = kalloc()) == 0) panic("usertrap: kalloc error");
+      memmove(mem, (char *) pa, PGSIZE);
+      kfree((void *) pa);
+      // todo pte on va should now point to mem instead of pa right?
+      pte = (pte_t *) PA2PTE(mem);
+      *pte |= PTE_W;
     }
-    // TODO: implement a new additional free2() (+ error checking (return value -1 means error))
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {

@@ -56,6 +56,12 @@ freerange(void *pa_start, void *pa_end)
 void
 kfree(void *pa)
 {
+  acquire(&refCount.lock);
+  refCount.page[(((char *) pa) - end) / PGSIZE]--;
+  release(&refCount.lock);
+
+  if (refCount.page[(((char *) pa) - end) / PGSIZE] > 0) return;
+
   struct run *r;
 
   if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
@@ -63,10 +69,6 @@ kfree(void *pa)
 
   // Fill with junk to catch dangling refs.
   memset(pa, 1, PGSIZE);
-
-  acquire(&refCount.lock);
-  refCount.page[(((char *) pa) - end) / PGSIZE]--;
-  release(&refCount.lock);
 
   r = (struct run*)pa;
 
@@ -93,10 +95,10 @@ kalloc(void)
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
   
-  acquire(&refCount.lock);
   if (refCount.page[(((char *) r) - end) / PGSIZE] != 0) {
     // TODO: error
   }
+  acquire(&refCount.lock);
   refCount.page[(((char *) r) - end) / PGSIZE]++;
   release(&refCount.lock);
 
