@@ -75,14 +75,14 @@ usertrap(void)
     syscall();
   } else if (r_scause() == 15) {
     // cow fault handler
-    uint64 va = r_stval(), pa;
-    pte_t *pte;
+    uint64 va = r_stval();
     if (va >= MAXVA) panic("usertrap: VA out of bounds");
+    pte_t *pte;
     if ((pte = walk(p->pagetable, va, 0)) == 0) panic("usertrap: PTE should exist");
     if ((*pte & PTE_V) == 0) panic("usertrap: page not valid");
     if ((*pte & PTE_U) == 0) panic("usertrap: page not set for user"); // todo error message
     if ((*pte & PTE_W) != 0) panic("usertrap: page has write permissions"); // todo error message
-    pa = PTE2PA(*pte);
+    uint64 pa = PTE2PA(*pte);
     if (refCount.page[(((char *) pa) - end) / PGSIZE] == 1) *pte |= PTE_W;
     else {
       // flags = PTE_FLAGS(*pte);
@@ -91,9 +91,8 @@ usertrap(void)
       if ((mem = kalloc()) == 0) panic("usertrap: kalloc error");
       memmove(mem, (char *) pa, PGSIZE);
       kfree((void *) pa);
-      // todo pte on va should now point to mem instead of pa right?
-      pte = (pte_t *) PA2PTE(mem);
-      *pte |= PTE_W;
+      // todo pte on va should now point to mem instead of pa right? valid, user, rwx bits set to 1
+      *pte = PA2PTE(mem) | PTE_FLAGS(*pte) | PTE_W;
     }
   } else if((which_dev = devintr()) != 0){
     // ok

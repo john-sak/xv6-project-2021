@@ -329,7 +329,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       goto err;
     }
     // --> TODO: increment pa's reference counter <--
-    refCount.page[(((char *) pa) - end) / PGSIZE]++;
+    (refCount.page[(((char *) pa) - end) / PGSIZE])++;
   }
   return 0;
 

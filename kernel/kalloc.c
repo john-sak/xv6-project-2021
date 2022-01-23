@@ -57,7 +57,7 @@ void
 kfree(void *pa)
 {
   acquire(&refCount.lock);
-  refCount.page[(((char *) pa) - end) / PGSIZE]--;
+  (refCount.page[(((char *) pa) - end) / PGSIZE])--;
   release(&refCount.lock);
 
   if (refCount.page[(((char *) pa) - end) / PGSIZE] > 0) return;
@@ -92,15 +92,15 @@ kalloc(void)
     kmem.freelist = r->next;
   release(&kmem.lock);
 
-  if(r)
+  if(r) {
     memset((char*)r, 5, PGSIZE); // fill with junk
-  
-  if (refCount.page[(((char *) r) - end) / PGSIZE] != 0) {
-    // TODO: error
-  }
-  acquire(&refCount.lock);
-  refCount.page[(((char *) r) - end) / PGSIZE]++;
-  release(&refCount.lock);
+    if (refCount.page[(((char *) r) - end) / PGSIZE] != 0) {
+      panic("kalloc: refCount not 0");
+    }
+    acquire(&refCount.lock);
+    (refCount.page[(((char *) r) - end) / PGSIZE])++;
+    release(&refCount.lock);
+  }  
 
   return (void*)r;
 }
