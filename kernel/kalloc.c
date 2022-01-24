@@ -43,7 +43,7 @@ freerange(void *pa_start, void *pa_end)
   p = (char*)PGROUNDUP((uint64)pa_start);
   for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE) {
     acquire(&refCount.lock);
-    refCount.page[(p - end) / PGSIZE] = 1;
+    refCount.page[(p - ((char *) PGROUNDUP((uint64) end))) / PGSIZE] = 1;
     release(&refCount.lock);
     kfree(p);
   }
@@ -57,10 +57,10 @@ void
 kfree(void *pa)
 {
   acquire(&refCount.lock);
-  (refCount.page[(((char *) pa) - end) / PGSIZE])--;
+  refCount.page[(((char *) pa) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE]--;
   release(&refCount.lock);
 
-  if (refCount.page[(((char *) pa) - end) / PGSIZE] > 0) return;
+  if (refCount.page[(((char *) pa) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE] > 0) return;
 
   struct run *r;
 
@@ -94,11 +94,11 @@ kalloc(void)
 
   if(r) {
     memset((char*)r, 5, PGSIZE); // fill with junk
-    if (refCount.page[(((char *) r) - end) / PGSIZE] != 0) {
+    if (refCount.page[(((char *) r) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE] != 0) {
       panic("kalloc: refCount not 0");
     }
     acquire(&refCount.lock);
-    (refCount.page[(((char *) r) - end) / PGSIZE])++;
+    refCount.page[(((char *) r) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE]++;
     release(&refCount.lock);
   }  
 
