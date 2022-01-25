@@ -85,7 +85,7 @@ usertrap(void)
     uint64 pa = PTE2PA(*pte);
     if (refCount.page[(((char *) pa) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE] == 1) *pte |= PTE_W;
     else {
-      // flags = PTE_FLAGS(*pte);
+      uint flags = PTE_FLAGS(*pte);
       // flags |= PTE_W;
       char *mem;
       if ((mem = kalloc()) == 0) panic("usertrap: kalloc error");
@@ -93,7 +93,7 @@ usertrap(void)
       // todo pte on va should now point to mem instead of pa right? valid, user, rwx bits set to 1
       // uvmunmap(p->pagetable, va, 1, 1);
       kfree((void *) pa);
-      *pte = PA2PTE(mem) | PTE_FLAGS(*pte) | PTE_W;
+      *pte = PA2PTE(mem) | flags | PTE_W;
     }
   } else if((which_dev = devintr()) != 0){
     // ok
