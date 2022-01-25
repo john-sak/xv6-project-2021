@@ -83,17 +83,22 @@ usertrap(void)
     if ((*pte & PTE_U) == 0) panic("usertrap: page not set for user"); // todo error message
     if ((*pte & PTE_W) != 0) panic("usertrap: page has write permissions"); // todo error message
     uint64 pa = PTE2PA(*pte);
-    if (refCount.page[(((char *) pa) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE] == 1) *pte |= PTE_W;
+    acquire(&refCount.lock);
+    int refCNT = refCount.page[(((char *) pa) - ((char *) KERNBASE)) / PGSIZE];
+    release(&refCount.lock);
+    if (refCNT == 1) *pte |= PTE_W;
     else {
-      uint flags = PTE_FLAGS(*pte);
-      // flags |= PTE_W;
       char *mem;
-      if ((mem = kalloc()) == 0) panic("usertrap: kalloc error");
-      memmove(mem, (char *) pa, PGSIZE);
-      // todo pte on va should now point to mem instead of pa right? valid, user, rwx bits set to 1
-      // uvmunmap(p->pagetable, va, 1, 1);
-      kfree((void *) pa);
-      *pte = PA2PTE(mem) | flags | PTE_W;
+      if ((mem = kalloc()) == 0) p->killed = 1;
+      else {
+        uint flags = PTE_FLAGS(*pte);
+        flags |= PTE_W;
+        memmove(mem, (char *) pa, PGSIZE);
+        // todo pte on va should now point to mem instead of pa right? valid, user, rwx bits set to 1
+        // uvmunmap(p->pagetable, va, 1, 1);
+        kfree((void *) pa);
+        *pte = PA2PTE(mem) | flags;
+      }
     }
   } else if((which_dev = devintr()) != 0){
     // ok

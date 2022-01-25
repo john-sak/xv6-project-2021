@@ -9,7 +9,7 @@
 
 static int loadseg(pde_t *pgdir, uint64 addr, struct inode *ip, uint offset, uint sz);
 
-uint64 walkaddr(pagetable_t, uint64);
+// pte_t *walk(pagetable_t, uint64, int);
 
 int
 exec(char *path, char **argv)
@@ -113,15 +113,14 @@ exec(char *path, char **argv)
   // Commit to the user image.
   oldpagetable = p->pagetable;
 
-  uint64 pa, j;
+  // uint64 pa, j;
   // pte_t *pte;
-  for (j = 0; j < oldsz; j += PGSIZE) {
-    pa = walkaddr(oldpagetable, j);
-    // if ((pte = walk(oldpagetable, j, 0)) == 0) panic("");
-    // if ((*pte * PTE_V) == 0) panic("");
-    // pa = PTE2PA(*pte);
-    kfree((void *) pa);
-  }
+  // for (j = 0; j < oldsz; j += PGSIZE) {
+  //   if ((pte = walk(oldpagetable, j, 0)) == 0) panic("exec: walk()");
+  //   if ((*pte & PTE_V) == 0) panic("exec: PTE_V");
+  //   pa = PTE2PA(*pte);
+  //   kfree((void *) pa);
+  // }
 
   p->pagetable = pagetable;
   p->sz = sz;
