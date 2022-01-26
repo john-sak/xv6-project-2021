@@ -313,17 +313,11 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       panic("uvmcopy: page not present");
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
-
-    // parent and child's PTEs are READ_ONLY 
-    *pte &= ~PTE_W;
     flags &= ~PTE_W;
-
     if(mappages(new, i, PGSIZE, (uint64)pa, flags) != 0){
       goto err;
     }
-    // acquire(&refCount.lock);
-    // refCount.page[(((char *) pa) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE]++;
-    // release(&refCount.lock);
+    *pte &= ~PTE_W;
     refINC((void *) pa);
   }
   return 0;

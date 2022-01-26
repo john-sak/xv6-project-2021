@@ -23,7 +23,7 @@ struct {
   struct run *freelist;
 } kmem;
 
-// reference count for pages
+// reference counter for cow pages
 struct {
   struct spinlock lock;
   int page[PHYSTOP/PGSIZE];
@@ -104,11 +104,9 @@ kalloc(void)
 
   if(r) {
     memset((char*)r, 5, PGSIZE); // fill with junk
-
     acquire(&refCount.lock);
     int refCNT = refCount.page[(((char *) r) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE];
     release(&refCount.lock);
-
     if (refCNT != 0) {
       printf("refCount is %d\n", refCount.page[(((char *) r) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE]);
       panic("kalloc: refCount not 0");
