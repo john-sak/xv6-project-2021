@@ -70,32 +70,36 @@ usertrap(void)
   } else if (r_scause() == 15) {
     // cow fault handler
     uint64 va = PGROUNDDOWN(r_stval());
-    if (va >= MAXVA) panic("usertrap: VA out of bounds");
-    pte_t *pte;
-    if ((pte = walk(p->pagetable, va, 0)) == 0) {
-      printf("usertrap: PTE should exists");
-      p->killed = 1;
-    } else if ((*pte & PTE_V) == 0) {
-      printf("usertrap: page not valid");
-      p->killed = 1;
-    } else if ((*pte & PTE_U) == 0) {
-      printf("usertrap: not user page");
-      p->killed = 1;
-    } else if ((*pte & PTE_W) != 0) {
-      printf("usertrap: not a COW page");
+    if (va >= MAXVA) {
+      printf("usertrap: VA out of bounds");
       p->killed = 1;
     } else {
-      uint64 pa = PTE2PA(*pte);
-      uint flags = PTE_FLAGS(*pte);
-      char *mem;
-      if ((mem = kalloc()) == 0) p->killed = 1;
-      else {
-        memmove(mem, (char *) pa, PGSIZE);
-        uvmunmap(p->pagetable, va, 1, 0);
-        // uvmunmap(p->pagetable, va, 1, 1);
-        kfree((void *) pa);
-        flags |= PTE_W;
-        mappages(p->pagetable, va, PGSIZE, (uint64) mem, flags);
+      pte_t *pte;
+      if ((pte = walk(p->pagetable, va, 0)) == 0) {
+        printf("usertrap: PTE should exists");
+        p->killed = 1;
+      } else if ((*pte & PTE_V) == 0) {
+        printf("usertrap: page not valid");
+        p->killed = 1;
+      } else if ((*pte & PTE_U) == 0) {
+        printf("usertrap: not user page");
+        p->killed = 1;
+      } else if ((*pte & PTE_W) != 0) {
+        printf("usertrap: not a COW page");
+        p->killed = 1;
+      } else {
+        uint64 pa = PTE2PA(*pte);
+        uint flags = PTE_FLAGS(*pte);
+        char *mem;
+        if ((mem = kalloc()) == 0) p->killed = 1;
+        else {
+          memmove(mem, (char *) pa, PGSIZE);
+          uvmunmap(p->pagetable, va, 1, 0);
+          // uvmunmap(p->pagetable, va, 1, 1);
+          kfree((void *) pa);
+          flags |= PTE_W;
+          mappages(p->pagetable, va, PGSIZE, (uint64) mem, flags);
+        }
       }
     }
   } else if((which_dev = devintr()) != 0){
