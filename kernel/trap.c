@@ -29,12 +29,6 @@ trapinithart(void)
   w_stvec((uint64)kernelvec);
 }
 
-extern struct ref {
-  struct spinlock lock;
-  int page[PHYSTOP/PGSIZE];
-} refCount;
-
-extern char end[];
 pte_t *walk(pagetable_t, uint64, int);
 
 //
@@ -75,29 +69,33 @@ usertrap(void)
     syscall();
   } else if (r_scause() == 15) {
     // cow fault handler
-    uint64 va = r_stval();
+    uint64 va = PGROUNDDOWN(r_stval());
     if (va >= MAXVA) panic("usertrap: VA out of bounds");
     pte_t *pte;
-    if ((pte = walk(p->pagetable, va, 0)) == 0) panic("usertrap: PTE should exist");
-    if ((*pte & PTE_V) == 0) panic("usertrap: page not valid");
-    if ((*pte & PTE_U) == 0) panic("usertrap: page not set for user"); // todo error message
-    if ((*pte & PTE_W) != 0) panic("usertrap: page has write permissions"); // todo error message
-    uint64 pa = PTE2PA(*pte);
-    acquire(&refCount.lock);
-    int refCNT = refCount.page[(((char *) pa) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE];
-    release(&refCount.lock);
-    if (refCNT == 1) *pte |= PTE_W;
-    else {
+    if ((pte = walk(p->pagetable, va, 0)) == 0) {
+      printf("usertrap: PTE should exists");
+      p->killed = 1;
+    } else if ((*pte & PTE_V) == 0) {
+      printf("usertrap: page not valid");
+      p->killed = 1;
+    } else if ((*pte & PTE_U) == 0) {
+      printf("usertrap: not user page");
+      p->killed = 1;
+    } else if ((*pte & PTE_W) != 0) {
+      printf("usertrap: not a COW page");
+      p->killed = 1;
+    } else {
+      uint64 pa = PTE2PA(*pte);
+      uint flags = PTE_FLAGS(*pte);
       char *mem;
       if ((mem = kalloc()) == 0) p->killed = 1;
       else {
-        uint flags = PTE_FLAGS(*pte);
-        flags |= PTE_W;
         memmove(mem, (char *) pa, PGSIZE);
-        // todo pte on va should now point to mem instead of pa right? valid, user, rwx bits set to 1
-        // uvmunmap(p->pagetable, va, 1, 1);
+        flags |= PTE_W;
+        uvmunmap(p->pagetable, va, 1, 0);
+        // refDEC((void *) pa);
         kfree((void *) pa);
-        *pte = PA2PTE(mem) | flags;
+        mappages(p->pagetable, va, PGSIZE, (uint64) mem, flags);
       }
     }
   } else if((which_dev = devintr()) != 0){

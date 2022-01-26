@@ -24,10 +24,24 @@ struct {
 } kmem;
 
 // reference count for pages
-struct refc {
+struct {
   struct spinlock lock;
   int page[PHYSTOP/PGSIZE];
 } refCount;
+
+int refINC(void *pa) {
+  acquire(&refCount.lock);
+  int ret = ++refCount.page[((( char *) pa) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE];
+  release(&refCount.lock);
+  return ret;
+}
+
+int refDEC(void *pa) {
+  acquire(&refCount.lock);
+  int ret = --refCount.page[((( char *) pa) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE];
+  release(&refCount.lock);
+  return ret;
+}
 
 void
 kinit()
@@ -43,7 +57,7 @@ freerange(void *pa_start, void *pa_end)
   p = (char*)PGROUNDUP((uint64)pa_start);
   for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE) {
     acquire(&refCount.lock);
-    refCount.page[(p - ((char *) PGROUNDUP((uint64) end))) / PGSIZE] = 1;
+    refCount.page[((( char *) p) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE] = 1;
     release(&refCount.lock);
     kfree(p);
   }
@@ -56,15 +70,7 @@ freerange(void *pa_start, void *pa_end)
 void
 kfree(void *pa)
 {
-  acquire(&refCount.lock);
-  refCount.page[(((char *) pa) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE]--;
-  release(&refCount.lock);
-
-  acquire(&refCount.lock);
-  int refCNT = refCount.page[(((char *) pa) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE];
-  release(&refCount.lock);
-
-  if (refCNT > 0) return;
+  if (refDEC((void *) pa) > 0) return;
 
   struct run *r;
 
@@ -107,9 +113,7 @@ kalloc(void)
       printf("refCount is %d\n", refCount.page[(((char *) r) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE]);
       panic("kalloc: refCount not 0");
     }
-    acquire(&refCount.lock);
-    refCount.page[(((char *) r) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE]++;
-    release(&refCount.lock);
+    refINC((void *) r);
   }  
 
   return (void*)r;
