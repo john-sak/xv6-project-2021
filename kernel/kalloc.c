@@ -43,7 +43,7 @@ freerange(void *pa_start, void *pa_end)
   p = (char*)PGROUNDUP((uint64)pa_start);
   for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE) {
     acquire(&refCount.lock);
-    refCount.page[(p - ((char *) KERNBASE)) / PGSIZE] = 1;
+    refCount.page[(p - ((char *) PGROUNDUP((uint64) end))) / PGSIZE] = 1;
     release(&refCount.lock);
     kfree(p);
   }
@@ -57,11 +57,11 @@ void
 kfree(void *pa)
 {
   acquire(&refCount.lock);
-  refCount.page[(((char *) pa) - ((char *) KERNBASE)) / PGSIZE]--;
+  refCount.page[(((char *) pa) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE]--;
   release(&refCount.lock);
 
   acquire(&refCount.lock);
-  int refCNT = refCount.page[(((char *) pa) - ((char *) KERNBASE)) / PGSIZE];
+  int refCNT = refCount.page[(((char *) pa) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE];
   release(&refCount.lock);
 
   if (refCNT > 0) return;
@@ -100,15 +100,15 @@ kalloc(void)
     memset((char*)r, 5, PGSIZE); // fill with junk
 
     acquire(&refCount.lock);
-    int refCNT = refCount.page[(((char *) r) - ((char *) KERNBASE)) / PGSIZE];
+    int refCNT = refCount.page[(((char *) r) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE];
     release(&refCount.lock);
 
     if (refCNT != 0) {
-      printf("refCount is %d\n", refCount.page[(((char *) r) - ((char *) KERNBASE)) / PGSIZE]);
+      printf("refCount is %d\n", refCount.page[(((char *) r) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE]);
       panic("kalloc: refCount not 0");
     }
     acquire(&refCount.lock);
-    refCount.page[(((char *) r) - ((char *) KERNBASE)) / PGSIZE]++;
+    refCount.page[(((char *) r) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE]++;
     release(&refCount.lock);
   }  
 

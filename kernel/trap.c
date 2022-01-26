@@ -84,7 +84,7 @@ usertrap(void)
     if ((*pte & PTE_W) != 0) panic("usertrap: page has write permissions"); // todo error message
     uint64 pa = PTE2PA(*pte);
     acquire(&refCount.lock);
-    int refCNT = refCount.page[(((char *) pa) - ((char *) KERNBASE)) / PGSIZE];
+    int refCNT = refCount.page[(((char *) pa) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE];
     release(&refCount.lock);
     if (refCNT == 1) *pte |= PTE_W;
     else {

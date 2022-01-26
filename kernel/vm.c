@@ -330,7 +330,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     }
     // --> TODO: increment pa's reference counter <--
     acquire(&refCount.lock);
-    refCount.page[(((char *) pa) - ((char *) KERNBASE)) / PGSIZE]++;
+    refCount.page[(((char *) pa) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE]++;
     release(&refCount.lock);
   }
   return 0;
