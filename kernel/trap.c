@@ -91,10 +91,10 @@ usertrap(void)
       if ((mem = kalloc()) == 0) p->killed = 1;
       else {
         memmove(mem, (char *) pa, PGSIZE);
-        flags |= PTE_W;
         uvmunmap(p->pagetable, va, 1, 0);
-        // refDEC((void *) pa);
+        // uvmunmap(p->pagetable, va, 1, 1);
         kfree((void *) pa);
+        flags |= PTE_W;
         mappages(p->pagetable, va, PGSIZE, (uint64) mem, flags);
       }
     }
