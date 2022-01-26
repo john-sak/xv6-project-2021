@@ -369,8 +369,7 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
       char *mem;
       if ((mem = kalloc()) == 0) return -1;
       memmove(mem, (char *) pa0, PGSIZE);
-      uvmunmap(pagetable, va0, 1, 0);
-      kfree((void *) pa0);
+      uvmunmap(pagetable, va0, 1, 1);
       flags |= PTE_W;
       mappages(pagetable, va0, PGSIZE, (uint64) mem, flags);
     }

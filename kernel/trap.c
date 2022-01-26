@@ -94,9 +94,7 @@ usertrap(void)
         if ((mem = kalloc()) == 0) p->killed = 1;
         else {
           memmove(mem, (char *) pa, PGSIZE);
-          uvmunmap(p->pagetable, va, 1, 0);
-          // uvmunmap(p->pagetable, va, 1, 1);
-          kfree((void *) pa);
+          uvmunmap(p->pagetable, va, 1, 1);
           flags |= PTE_W;
           mappages(p->pagetable, va, PGSIZE, (uint64) mem, flags);
         }
