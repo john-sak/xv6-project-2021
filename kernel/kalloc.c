@@ -108,8 +108,8 @@ kalloc(void)
     int refCNT = refCount.page[(((char *) r) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE];
     release(&refCount.lock);
     if (refCNT != 0) {
-      printf("refCount is %d\n", refCount.page[(((char *) r) - ((char *) PGROUNDUP((uint64) end))) / PGSIZE]);
-      panic("kalloc: refCount not 0");
+      printf("kalloc: refCount not 0");
+      return 0;
     }
     refINC((void *) r);
   }  
